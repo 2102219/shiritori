@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <h1>しりとり</h1>
+    <p id="previousWord"></p>
+    <input id="nextWordInput" type="text" />
+    <button id="nextWordSendButton">送信</button>
+    <button id="resetButton">リセット</button>
+
+    <script>
+      window.onload = async () => {
+        const fetchCurrentWord = async () => {
+          const response = await fetch("/shiritori", { method: "GET" });
+          if (!response.ok) {
+            const errorJson = await response.text();
+            const errorObj = JSON.parse(errorJson);
+            alert(errorObj["errorMessage"]);
+            return null;
+          }
+          return await response.text();
+        };
+
+        const updatePreviousWord = async () => {
+          const previousWord = await fetchCurrentWord();
+          if (previousWord !== null) {
+            const paragraph = document.querySelector("#previousWord");
+            paragraph.innerHTML = `前の単語: ${previousWord}`;
+          }
+        };
+
+        await updatePreviousWord();
+
+        document.querySelector("#nextWordSendButton").onclick = async () => {
+          const nextWordInput = document.querySelector("#nextWordInput");
+          const nextWordInputText = nextWordInput.value.trim();
+
+          if (nextWordInputText === "") {
+            alert("次の文字を入力してください");
+            return;
+          }
+
+          const response = await fetch("/shiritori", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ nextWord: nextWordInputText })
+          });
+
+          if (!response.ok) {
+            const errorJson = await response.text();
+            const errorObj = JSON.parse(errorJson);
+            
+            if (errorObj.errorCode === "10003") {
+              alert("過去に使用した単語です。別の単語を入力してください。");
+            } else {
+              alert(errorObj["errorMessage"]);
+            }
+          } else {
+            await updatePreviousWord();
+          }
+
+          nextWordInput.value = "";
+        };
+
+        document.querySelector("#resetButton").onclick = async () => {
+          const response = await fetch("/reset", { method: "GET" });
+          if (!response.ok) {
+            const errorJson = await response.text();
+            const errorObj = JSON.parse(errorJson);
+            alert(errorObj["errorMessage"]);
+          } else {
+            await updatePreviousWord();
+          }
+        };
+      };
+    </script>
+</body>
+</html>
